@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Mini InstaChat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #fafafa;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #login,
+        #chat {
+            width: 400px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+        }
+
+        #chat {
+            display: none;
+        }
+
+        .msg {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            background: #eee;
+        }
+
+        .me {
+            background: #dcf8c6;
+            text-align: right;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin-top: 5px;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        .file {
+            max-width: 100%;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="login">
+        <h2>Enter Your Name</h2>
+        <input type="text" id="username" placeholder="Your name">
+        <button onclick="login()">Start Chat</button>
+    </div>
+
+    <div id="chat">
+        <h2>Mini InstaChat</h2>
+        <div id="messages"></div>
+        <input type="text" id="message" placeholder="Type a message...">
+        <input type="file" id="fileInput" accept="image/*,video/*">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
+
+    <script>
+        // 🔥 Your Firebase config (replace with your own project keys from Firebase console)
+        const firebaseConfig = {
+            apiKey: "AIzaSyC62xq7eaR8UeqokUD4TkyVEH8qcU5frkw",
+            authDomain: "chat-41769.firebaseapp.com",
+            projectId: "chat-41769",
+            storageBucket: "chat-41769.firebasestorage.app",
+            messagingSenderId: "479484567057",
+            appId: "1:479484567057:web:5cc5f08e909f609acedbb0",
+            measurementId: "G-5HN6G1TEQV"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const storage = firebase.storage();
+
+        let username = "";
+
+        function login() {
+            username = document.getElementById("username").value;
+            if (username.trim() !== "") {
+                document.getElementById("login").style.display = "none";
+                document.getElementById("chat").style.display = "block";
+            }
+        }
+
+        function sendMessage() {
+            const msgInput = document.getElementById("message");
+            const fileInput = document.getElementById("fileInput");
+            const text = msgInput.value;
+
+            if (fileInput.files.length > 0) {
+                let file = fileInput.files[0];
+                let fileRef = storage.ref('uploads/' + Date.now() + "_" + file.name);
+                fileRef.put(file).then(snapshot => {
+                    snapshot.ref.getDownloadURL().then(url => {
+                        db.ref("messages").push({ user: username, file: url, type: file.type });
+                    });
+                });
+                fileInput.value = "";
+            }
+            if (text.trim() !== "") {
+                db.ref("messages").push({ user: username, text: text });
+                msgInput.value = "";
+            }
+        }
+
+        db.ref("messages").on("child_added", snap => {
+            const msg = snap.val();
+            const messages = document.getElementById("messages");
+            const div = document.createElement("div");
+            div.classList.add("msg");
+            if (msg.user === username) div.classList.add("me");
+
+            if (msg.text) div.innerHTML = `<b>${msg.user}:</b> ${msg.text}`;
+            if (msg.file) {
+                if (msg.type.startsWith("image")) {
+                    div.innerHTML = `<b>${msg.user}:</b><br><img class="file" src="${msg.file}">`;
+                } else if (msg.type.startsWith("video")) {
+                    div.innerHTML = `<b>${msg.user}:</b><br><video class="file" controls src="${msg.file}"></video>`;
+                }
+            }
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        });
+    </script>
+</body>
+
+</html>
